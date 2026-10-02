@@ -5,8 +5,15 @@ A browser playground for AssemblyAI real-time transcription through the Vercel A
 
 Speak into the microphone (or play the bundled sample clip) and watch partial words settle
 into final turns, with speaker labels, live speaker revisions, PII redaction, and the other
-streaming options exposed as controls. The right-hand panel shows the exact `streamTranscribe`
-call your settings produce.
+streaming options exposed as controls. Each turn shows its end-of-turn confidence changing as
+partials arrive (a real curve on the Universal Streaming models; a step from 0 to 1 on the Pro
+models, which detect turns by punctuation). The right-hand panel shows the exact
+`streamTranscribe` call your settings produce.
+
+The page follows the AssemblyAI brand design system: Oceanic Text headings, UN 11ST body,
+Modern Gothic Mono for labels, CTAs, and everything inside the transcript window, Cobolt as the
+only CTA accent, and the "UI & Code" green for the product's own output (speaker labels,
+redaction highlights, confidence bars).
 
 ![The playground after transcribing the sample clip](./screenshot.png)
 

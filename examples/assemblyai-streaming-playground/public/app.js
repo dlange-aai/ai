@@ -13,6 +13,8 @@ const state = {
   turns: new Map(),
   speakerOrder: [],
   events: new Map(),
+  // latest end_of_turn_confidence per turn_order, from the raw Turn messages
+  confidence: new Map(),
 };
 
 // ---------- settings -> providerOptions ----------
@@ -79,6 +81,31 @@ function readSettings() {
   return { model, options };
 }
 
+// ---------- code panel ----------
+
+function escapeHtml(text) {
+  return text.replace(
+    /[&<>]/g,
+    ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[ch],
+  );
+}
+
+// Brand code conventions: keywords green, strings Cobolt, numbers orange.
+function highlight(code) {
+  const tokens =
+    /(\/\/[^\n]*)|('(?:[^'\\\n]|\\.)*')|\b(\d+(?:\.\d+)?)\b|\b(import|from|const|await|for|of|if|true|false|null)\b/g;
+  return escapeHtml(code).replace(
+    tokens,
+    (match, comment, string, number, keyword) => {
+      if (comment) return `<span class="c">${comment}</span>`;
+      if (string) return `<span class="s">${string}</span>`;
+      if (number) return `<span class="n">${number}</span>`;
+      if (keyword) return `<span class="k">${keyword}</span>`;
+      return match;
+    },
+  );
+}
+
 function toObjectLiteral(value, indent) {
   return JSON.stringify(value, null, 2)
     .replace(/"([A-Za-z_$][\w$]*)":/g, '$1:')
@@ -90,8 +117,7 @@ function toObjectLiteral(value, indent) {
 function renderCode() {
   const { model, options } = readSettings();
   const hasOptions = Object.keys(options).length > 0;
-  $('#code').textContent =
-    `import { createAssemblyAI } from '@ai-sdk/assemblyai';
+  const code = `import { createAssemblyAI } from '@ai-sdk/assemblyai';
 import { experimental_streamTranscribe as streamTranscribe } from 'ai';
 import { WebSocket } from 'ws';
 
@@ -114,6 +140,7 @@ for await (const part of result.fullStream) {
   if (part.type === 'transcript-partial') show(part.id, part.text, { partial: true });
   if (part.type === 'transcript-final') show(part.id, part.text, part.providerMetadata?.assemblyai);
 }`;
+  $('#code').innerHTML = highlight(code);
 }
 
 form.addEventListener('input', renderCode);
@@ -146,7 +173,7 @@ function setStatus(status, detail) {
     status === 'connecting' || status === 'listening' || status === 'finishing';
   $('#mic').disabled = live;
   $('#sample').disabled = live;
-  $('#stop').disabled = !(status === 'listening');
+  $('#stop').disabled = status !== 'listening';
   $('#settingsPanel').setAttribute('aria-disabled', String(live));
 }
 
@@ -154,6 +181,7 @@ function resetSession() {
   state.turns.clear();
   state.speakerOrder = [];
   state.events.clear();
+  state.confidence.clear();
   state.partials = 0;
   state.firstPartialAt = null;
   $('#turns').innerHTML = '';
@@ -167,7 +195,7 @@ function resetSession() {
     'audioDuration',
     'sessionId',
   ]) {
-    $(`#${id}`).textContent = '—';
+    $(`#${id}`).textContent = 'Waiting';
     $(`#${id}`).classList.add('muted');
   }
   $('#turnCount').textContent = '0';
@@ -338,7 +366,7 @@ async function startSampleClip(socket) {
     socket.send(pcm.buffer);
     showLevel(peak);
     $('#statusText').textContent =
-      `Listening to the sample clip, ${(offset / SAMPLE_RATE).toFixed(0)} of ${decoded.duration.toFixed(0)} s`;
+      `Sample clip, ${(offset / SAMPLE_RATE).toFixed(0)} of ${decoded.duration.toFixed(0)}s`;
   }, 100);
   return { stop: () => clearInterval(timer) };
 }
@@ -363,7 +391,7 @@ function handlePart(part) {
     case 'transcript-partial':
       if (state.firstPartialAt == null) {
         state.firstPartialAt = elapsed();
-        setStat('firstPartial', `${state.firstPartialAt} s after start`);
+        setStat('firstPartial', `${state.firstPartialAt}s after start`);
       }
       state.partials++;
       $('#partialCount').textContent = String(state.partials);
@@ -402,7 +430,7 @@ function handlePart(part) {
       if (part.durationInSeconds != null) {
         setStat(
           'audioDuration',
-          `${part.durationInSeconds} s of audio, ${meta.sessionDurationSeconds ?? '?'} s session`,
+          `${part.durationInSeconds}s of audio, ${meta.sessionDurationSeconds ?? '?'}s session`,
         );
       }
       if (meta.speechModelUsed) setStat('modelUsed', meta.speechModelUsed);
@@ -418,19 +446,53 @@ function handleRaw(raw) {
   $('#events').innerHTML = [...state.events.entries()]
     .map(
       ([name, count]) =>
-        `<div class="event"><span>${name}</span><b>${count}</b></div>`,
+        `<div class="event"><span class="e1">${name}</span><b>${count}</b></div>`,
     )
     .join('');
+  if (type === 'Turn') trackConfidence(raw);
   if (type === 'Begin' && raw.id) setStat('sessionId', raw.id);
   if (type === 'Begin' && raw.configuration?.model)
     setStat('modelUsed', raw.configuration.model);
   if (type === 'SpeakerRevision') applyRevisions(raw.revisions ?? []);
 }
 
-function speakerColor(label) {
-  if (label == null) return null;
+// The raw Turn message carries end_of_turn_confidence on every update, so the
+// value can be shown changing while a turn is still open. Raw parts arrive
+// just before the mapped part, so the value is stored and picked up when the
+// turn element is created or updated.
+function trackConfidence(raw) {
+  if (raw.turn_order == null || raw.end_of_turn_confidence == null) return;
+  const entry = {
+    value: raw.end_of_turn_confidence,
+    final: raw.end_of_turn === true,
+  };
+  state.confidence.set(raw.turn_order, entry);
+  const item = state.turns.get(`turn-${raw.turn_order}`);
+  if (item) renderConfidence(item, entry);
+}
+
+function renderConfidence(item, entry) {
+  const box = item.querySelector('.eot');
+  box.hidden = false;
+  box.classList.toggle('final', entry.final);
+  box.querySelector('.eot-value').textContent =
+    `End of turn ${entry.value.toFixed(2)}`;
+  box.querySelector('.eot-bar > div').style.width =
+    `${Math.round(entry.value * 100)}%`;
+}
+
+// Redacted spans ([PERSON_NAME], ####) get the UI & Code highlight block.
+function renderTranscript(text) {
+  return escapeHtml(text)
+    .replace(/\[([A-Z_]+)\]/g, '<mark class="redacted">[$1]</mark>')
+    .replace(/#{2,}/g, '<mark class="redacted">$&</mark>');
+}
+
+// Speaker A takes the green product accent, B the Cobolt outline, the rest
+// stay neutral and differ by letter only: one accent system per surface.
+function speakerClass(label) {
   if (!state.speakerOrder.includes(label)) state.speakerOrder.push(label);
-  return `var(--spk-${state.speakerOrder.indexOf(label) % 8})`;
+  return `spk-${Math.min(state.speakerOrder.indexOf(label), 2)}`;
 }
 
 function upsertTurn({
@@ -449,28 +511,33 @@ function upsertTurn({
     item = document.createElement('li');
     item.className = 'turn';
     item.dataset.turn = id;
-    item.innerHTML = `<div class="rail"></div><div class="turn-body"><div class="turn-meta"><span class="speaker"></span><span class="time"></span><span class="lang badge" hidden></span></div><p class="text"></p></div>`;
+    item.innerHTML = `<div class="turn-meta"><span class="speaker e1"></span><span class="time e1"></span><span class="lang e1" hidden></span><span class="eot" hidden><span class="eot-value e1"></span><span class="eot-bar" aria-hidden="true"><div></div></span></span></div><p class="text"></p>`;
     $('#turns').appendChild(item);
     state.turns.set(id, item);
     $('#turnCount').textContent = String(state.turns.size);
-    item.scrollIntoView({ block: 'nearest' });
+    // follow the newest turn inside the transcript window only; scrollIntoView
+    // would also scroll the document and push the header out of view
+    const wrap = $('.sheet-wrap');
+    wrap.scrollTop = wrap.scrollHeight;
   }
   item.classList.toggle('partial', partial);
-  item.classList.toggle('redacted-note', text === '' && !partial);
-  item.querySelector('.text').textContent =
-    text === '' && !partial
-      ? error
-        ? `Turn removed: ${error}`
-        : 'Turn removed'
-      : text;
+  item.classList.toggle('removed', text === '' && !partial);
+  const textEl = item.querySelector('.text');
+  if (text === '' && !partial) {
+    textEl.textContent = error ? `Turn removed: ${error}` : 'Turn removed';
+  } else {
+    textEl.innerHTML = renderTranscript(text);
+  }
   const time = item.querySelector('.time');
   if (startSecond != null) {
     time.textContent =
       endSecond != null
-        ? `${startSecond.toFixed(1)} to ${endSecond.toFixed(1)} s`
-        : `${startSecond.toFixed(1)} s`;
+        ? `${startSecond.toFixed(1)}s to ${endSecond.toFixed(1)}s`
+        : `${startSecond.toFixed(1)}s`;
   }
   if (speaker != null) setSpeaker(item, speaker);
+  const confidence = state.confidence.get(Number(id.replace('turn-', '')));
+  if (confidence) renderConfidence(item, confidence);
   if (language) {
     const badge = item.querySelector('.lang');
     badge.textContent = language;
@@ -479,8 +546,9 @@ function upsertTurn({
 }
 
 function setSpeaker(item, label) {
-  item.style.setProperty('--speaker', speakerColor(label));
-  item.querySelector('.speaker').textContent = `Speaker ${label}`;
+  const chip = item.querySelector('.speaker');
+  chip.className = `speaker e1 ${speakerClass(label)}`;
+  chip.textContent = `Speaker ${label}`;
 }
 
 function applyRevisions(revisions) {
@@ -492,9 +560,9 @@ function applyRevisions(revisions) {
       item.querySelector('.speaker').textContent.replace('Speaker ', '') || '?';
     setSpeaker(item, revision.speaker_label ?? '?');
     item.classList.add('revised');
-    setTimeout(() => item.classList.remove('revised'), 1500);
+    setTimeout(() => item.classList.remove('revised'), 900);
     lines.push(
-      `Turn ${revision.turn_order + 1}: ${before} became ${revision.speaker_label ?? 'unknown'}`,
+      `Turn ${revision.turn_order + 1}: speaker ${before} became ${revision.speaker_label ?? 'unknown'}`,
     );
   }
   if (lines.length) {
