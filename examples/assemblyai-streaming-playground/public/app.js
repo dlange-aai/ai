@@ -8,8 +8,13 @@ const state = {
   source: null,
   status: 'ready',
   startedAt: 0,
-  firstPartialAt: null,
   partials: 0,
+  // wall-clock time each 100 ms audio chunk left the browser, by chunk index
+  chunkSentAt: [],
+  // speech onset (audio ms) reported by SpeechStarted, waiting for its turn
+  pendingSpeechStartMs: null,
+  // per turn_order: { firstPartialMs, finalMs } latencies in milliseconds
+  latency: new Map(),
   turns: new Map(),
   speakerOrder: [],
   events: new Map(),
@@ -182,8 +187,10 @@ function resetSession() {
   state.speakerOrder = [];
   state.events.clear();
   state.confidence.clear();
+  state.latency.clear();
+  state.chunkSentAt = [];
+  state.pendingSpeechStartMs = null;
   state.partials = 0;
-  state.firstPartialAt = null;
   $('#turns').innerHTML = '';
   $('#empty').hidden = false;
   $('#warnings').innerHTML = '';
@@ -191,7 +198,8 @@ function resetSession() {
   $('#revisions').innerHTML = '<span class="muted">None yet.</span>';
   for (const id of [
     'modelUsed',
-    'firstPartial',
+    'avgFirstPartial',
+    'avgFinal',
     'audioDuration',
     'sessionId',
   ]) {
@@ -308,7 +316,10 @@ async function startMicrophone(socket) {
   const silent = context.createGain();
   silent.gain.value = 0;
   node.port.onmessage = ({ data }) => {
-    if (socket.readyState === WebSocket.OPEN) socket.send(data.pcm);
+    if (socket.readyState === WebSocket.OPEN) {
+      socket.send(data.pcm);
+      state.chunkSentAt.push(performance.now());
+    }
     showLevel(data.peak);
   };
   source.connect(node);
@@ -364,6 +375,7 @@ async function startSampleClip(socket) {
       pcm[i] = sample * 0x7fff;
     }
     socket.send(pcm.buffer);
+    state.chunkSentAt.push(performance.now());
     showLevel(peak);
     $('#statusText').textContent =
       `Sample clip, ${(offset / SAMPLE_RATE).toFixed(0)} of ${decoded.duration.toFixed(0)}s`;
@@ -372,10 +384,6 @@ async function startSampleClip(socket) {
 }
 
 // ---------- stream parts -> UI ----------
-
-function elapsed() {
-  return ((performance.now() - state.startedAt) / 1000).toFixed(2);
-}
 
 function handlePart(part) {
   switch (part.type) {
@@ -389,10 +397,6 @@ function handlePart(part) {
       if (part.modelId) setStat('modelUsed', part.modelId);
       break;
     case 'transcript-partial':
-      if (state.firstPartialAt == null) {
-        state.firstPartialAt = elapsed();
-        setStat('firstPartial', `${state.firstPartialAt}s after start`);
-      }
       state.partials++;
       $('#partialCount').textContent = String(state.partials);
       upsertTurn({
@@ -449,7 +453,11 @@ function handleRaw(raw) {
         `<div class="event"><span class="e1">${name}</span><b>${count}</b></div>`,
     )
     .join('');
-  if (type === 'Turn') trackConfidence(raw);
+  if (type === 'SpeechStarted') state.pendingSpeechStartMs = raw.timestamp;
+  if (type === 'Turn') {
+    trackConfidence(raw);
+    trackLatency(raw);
+  }
   if (type === 'Begin' && raw.id) setStat('sessionId', raw.id);
   if (type === 'Begin' && raw.configuration?.model)
     setStat('modelUsed', raw.configuration.model);
@@ -476,9 +484,101 @@ function renderConfidence(item, entry) {
   box.hidden = false;
   box.classList.toggle('final', entry.final);
   box.querySelector('.eot-value').textContent =
-    `End of turn ${entry.value.toFixed(2)}`;
+    `end of turn ${entry.value.toFixed(2)}`;
   box.querySelector('.eot-bar > div').style.width =
     `${Math.round(entry.value * 100)}%`;
+}
+
+// ---------- latency, measured against the audio the browser actually sent ----------
+
+const CHUNK_MS = (CHUNK_SAMPLES / SAMPLE_RATE) * 1000;
+
+// Wall-clock time at which the audio at `audioMs` left the browser. Chunks go
+// out at real-time pace, so interpolate inside the chunk that carried it.
+function sentAt(audioMs) {
+  const sent = state.chunkSentAt;
+  if (sent.length === 0) return null;
+  const index = Math.min(Math.floor(audioMs / CHUNK_MS), sent.length - 1);
+  return sent[index] + (audioMs - index * CHUNK_MS);
+}
+
+function audioSentMs() {
+  return state.chunkSentAt.length * CHUNK_MS;
+}
+
+// First partial: from speech onset (SpeechStarted on Pro models, else the first
+// word's start) to the first non-empty partial. Final: from the end of the last
+// word to the first message with end_of_turn=true.
+function trackLatency(raw) {
+  if (raw.turn_order == null) return;
+  const now = performance.now();
+  let entry = state.latency.get(raw.turn_order);
+  if (!entry) {
+    entry = { firstPartialMs: null, finalMs: null };
+    state.latency.set(raw.turn_order, entry);
+  }
+  const words = raw.words ?? [];
+
+  if (entry.firstPartialMs == null && (raw.transcript ?? '').length > 0) {
+    // a SpeechStarted timestamp is only usable if it is an audio position
+    const onset =
+      state.pendingSpeechStartMs != null &&
+      state.pendingSpeechStartMs <= audioSentMs() + 1000
+        ? state.pendingSpeechStartMs
+        : words[0]?.start;
+    state.pendingSpeechStartMs = null;
+    const at = onset != null ? sentAt(onset) : null;
+    if (at != null) entry.firstPartialMs = Math.max(0, now - at);
+  }
+
+  if (entry.finalMs == null && raw.end_of_turn === true && words.length > 0) {
+    const at = sentAt(words[words.length - 1].end);
+    if (at != null) entry.finalMs = Math.max(0, now - at);
+  }
+
+  const item = state.turns.get(`turn-${raw.turn_order}`);
+  if (item) renderLatency(item, entry);
+  renderAverages();
+}
+
+function formatSeconds(ms) {
+  return `${(ms / 1000).toFixed(2)}s`;
+}
+
+function renderLatency(item, entry) {
+  const box = item.querySelector('.latency');
+  const parts = [];
+  if (entry.firstPartialMs != null)
+    parts.push(`first partial ${formatSeconds(entry.firstPartialMs)}`);
+  if (entry.finalMs != null)
+    parts.push(`final ${formatSeconds(entry.finalMs)}`);
+  box.hidden = parts.length === 0;
+  box.textContent = parts.join(', ');
+}
+
+function renderAverages() {
+  const entries = [...state.latency.values()];
+  const average = key => {
+    const values = entries.map(e => e[key]).filter(v => v != null);
+    if (values.length === 0) return null;
+    return {
+      mean: values.reduce((a, b) => a + b, 0) / values.length,
+      n: values.length,
+    };
+  };
+  const turns = n => `${n} ${n === 1 ? 'turn' : 'turns'}`;
+  const first = average('firstPartialMs');
+  const final = average('finalMs');
+  if (first)
+    setStat(
+      'avgFirstPartial',
+      `${formatSeconds(first.mean)} after speech starts, over ${turns(first.n)}`,
+    );
+  if (final)
+    setStat(
+      'avgFinal',
+      `${formatSeconds(final.mean)} after speech ends, over ${turns(final.n)}`,
+    );
 }
 
 // Redacted spans ([PERSON_NAME], ####) get the UI & Code highlight block.
@@ -511,7 +611,7 @@ function upsertTurn({
     item = document.createElement('li');
     item.className = 'turn';
     item.dataset.turn = id;
-    item.innerHTML = `<div class="turn-meta"><span class="speaker e1"></span><span class="time e1"></span><span class="lang e1" hidden></span><span class="eot" hidden><span class="eot-value e1"></span><span class="eot-bar" aria-hidden="true"><div></div></span></span></div><p class="text"></p>`;
+    item.innerHTML = `<div class="turn-meta"><span class="speaker e1"></span><span class="time m1"></span><span class="lang e1" hidden></span><span class="latency m1" hidden></span><span class="eot" hidden><span class="eot-value m1"></span><span class="eot-bar" aria-hidden="true"><div></div></span></span></div><p class="text"></p>`;
     $('#turns').appendChild(item);
     state.turns.set(id, item);
     $('#turnCount').textContent = String(state.turns.size);
@@ -536,8 +636,11 @@ function upsertTurn({
         : `${startSecond.toFixed(1)}s`;
   }
   if (speaker != null) setSpeaker(item, speaker);
-  const confidence = state.confidence.get(Number(id.replace('turn-', '')));
+  const turnOrder = Number(id.replace('turn-', ''));
+  const confidence = state.confidence.get(turnOrder);
   if (confidence) renderConfidence(item, confidence);
+  const latency = state.latency.get(turnOrder);
+  if (latency) renderLatency(item, latency);
   if (language) {
     const badge = item.querySelector('.lang');
     badge.textContent = language;

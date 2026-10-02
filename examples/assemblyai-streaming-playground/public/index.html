@@ -44,6 +44,7 @@
   h1, h2, h3 { font-family: var(--font-display); font-weight: 400; color: var(--color-black-500); line-height: 1; margin: 0; }
   .e1 { font-family: var(--font-mono); font-size: 12px; letter-spacing: 1.2px; text-transform: uppercase; font-feature-settings: "ss09" 1; }
   .e2 { font-family: var(--font-mono); font-size: 14px; letter-spacing: 1.4px; text-transform: uppercase; }
+  .m1 { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.3px; }
   .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20; font-size: 20px; line-height: 1; }
 
   /* header */
@@ -129,10 +130,11 @@
   .turn { padding: 18px 32px; border-bottom: 1px solid var(--color-neutral-100); }
   .turn:last-child { border-bottom: 0; }
   .turn-meta { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; font-size: 12px; color: var(--color-black-300); }
-  .turn-meta .e1 { color: var(--color-black-300); }
+  .turn-meta .e1, .turn-meta .m1 { color: var(--color-black-300); }
+  .latency { white-space: nowrap; }
   .eot { display: inline-flex; align-items: center; gap: 10px; margin-left: auto; color: var(--color-black-300); transition: color 0.2s ease; }
   .eot.final { color: var(--green-text); }
-  .eot.final .e1 { color: var(--green-text); }
+  .eot.final .m1 { color: var(--green-text); }
   .eot-bar { width: 72px; height: 4px; border-radius: var(--radius-full); background: var(--color-neutral-100); overflow: hidden; }
   .eot-bar > div { height: 100%; width: 0; background: var(--green-text); transition: width 0.2s ease; }
   .speaker { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border: 1px solid var(--color-neutral-300); border-radius: var(--radius-sm); color: var(--color-black-400); transition: all 0.2s ease; }
@@ -296,7 +298,8 @@
       <h2>Session</h2>
       <dl>
         <dt>Model used</dt><dd id="modelUsed" class="muted">Not started</dd>
-        <dt>First partial</dt><dd id="firstPartial" class="muted">Not started</dd>
+        <dt>First partial</dt><dd id="avgFirstPartial" class="muted">Not started</dd>
+        <dt>Final transcript</dt><dd id="avgFinal" class="muted">Not started</dd>
         <dt>Turns</dt><dd id="turnCount">0</dd>
         <dt>Partials</dt><dd id="partialCount">0</dd>
         <dt>Audio</dt><dd id="audioDuration" class="muted">Not started</dd>
