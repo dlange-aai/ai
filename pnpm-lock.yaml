@@ -687,6 +687,37 @@ importers:
         specifier: 5.8.3
         version: 5.8.3
 
+  examples/assemblyai-streaming-playground:
+    dependencies:
+      '@ai-sdk/assemblyai':
+        specifier: workspace:*
+        version: link:../../packages/assemblyai
+      '@ai-sdk/provider-utils':
+        specifier: workspace:*
+        version: link:../../packages/provider-utils
+      ai:
+        specifier: workspace:*
+        version: link:../../packages/ai
+      dotenv:
+        specifier: 16.4.5
+        version: 16.4.5
+      ws:
+        specifier: ^8.21.0
+        version: 8.21.0
+    devDependencies:
+      '@types/node':
+        specifier: 22.19.19
+        version: 22.19.19
+      '@types/ws':
+        specifier: ^8.5.13
+        version: 8.18.1
+      tsx:
+        specifier: 4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: 5.8.3
+        version: 5.8.3
+
   examples/express:
     dependencies:
       '@ai-sdk/openai':
@@ -28218,7 +28249,7 @@ snapshots:
       nanoid: 5.1.16
       node-machine-id: 1.1.12
       simple-git: 3.36.0(supports-color@10.2.2)
-      ws: 8.21.3
+      ws: 8.21.0
       yaml: 2.9.1
       zod: 4.4.3
     transitivePeerDependencies:
@@ -29100,7 +29131,7 @@ snapshots:
       google-auth-library: 10.9.1(supports-color@10.2.2)
       p-retry: 4.6.2
       protobufjs: 7.6.5
-      ws: 8.21.3
+      ws: 8.21.0
     optionalDependencies:
       '@modelcontextprotocol/sdk': 1.30.0(@cfworker/json-schema@4.1.1)(supports-color@10.2.2)(zod@3.25.76)
     transitivePeerDependencies:
@@ -29130,7 +29161,7 @@ snapshots:
     dependencies:
       '@hono/node-server': 1.19.15(hono@4.12.34)
       hono: 4.12.34
-      ws: 8.21.3
+      ws: 8.21.0
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
@@ -30978,7 +31009,7 @@ snapshots:
   '@mistralai/mistralai@2.2.6(@opentelemetry/api@1.9.1)':
     dependencies:
       '@opentelemetry/semantic-conventions': 1.43.0
-      ws: 8.21.3
+      ws: 8.21.0
       zod: 4.4.3
       zod-to-json-schema: 3.25.2(zod@4.4.3)
     optionalDependencies:
@@ -31636,7 +31667,7 @@ snapshots:
       vite-plugin-inspect: 11.4.1(@nuxt/kit@4.5.2(magic-string@0.30.21)(magicast@0.5.4)(oxc-parser@0.140.0)(rolldown@1.2.11)(unplugin@3.3.0(esbuild@0.28.2)(rolldown@1.2.11)(rollup@4.62.5)(vite@7.3.6(@types/node@22.19.19)(jiti@2.7.0)(less@4.4.0)(lightningcss@1.32.0)(sass@1.90.0)(terser@5.50.0)(tsx@4.23.12)(yaml@2.9.1))(webpack@5.105.0(@swc/core@1.15.3(@swc/helpers@0.5.23))(cssnano@7.1.9(postcss@8.5.26))(csso@5.0.5)(esbuild@0.28.2)(lightningcss@1.32.0)(postcss@8.5.26)(uglify-js@3.19.3))))(vite@7.3.6(@types/node@22.19.19)(jiti@2.7.0)(less@4.4.0)(lightningcss@1.32.0)(sass@1.90.0)(terser@5.50.0)(tsx@4.23.12)(yaml@2.9.1))
       vite-plugin-vue-tracer: 1.5.0(vite@7.3.6(@types/node@22.19.19)(jiti@2.7.0)(less@4.4.0)(lightningcss@1.32.0)(sass@1.90.0)(terser@5.50.0)(tsx@4.23.12)(yaml@2.9.1))(vue@3.5.41(typescript@5.8.3))
       which: 6.0.1
-      ws: 8.21.3
+      ws: 8.21.0
     transitivePeerDependencies:
       - '@azure/app-configuration'
       - '@azure/cosmos'
@@ -31701,7 +31732,7 @@ snapshots:
       vite-plugin-inspect: 11.4.1(@nuxt/kit@4.5.2(magic-string@0.30.21)(magicast@0.5.4)(oxc-parser@0.140.0)(rolldown@1.2.11)(unplugin@3.3.0(esbuild@0.28.2)(rolldown@1.2.11)(rollup@4.62.5)(vite@7.3.6(@types/node@22.19.19)(jiti@2.7.0)(less@4.4.0)(lightningcss@1.32.0)(sass@1.90.0)(terser@5.50.0)(tsx@4.23.12)(yaml@2.9.1))(webpack@5.105.0(@swc/core@1.15.3(@swc/helpers@0.5.23))(cssnano@7.1.9(postcss@8.5.26))(csso@5.0.5)(esbuild@0.28.2)(lightningcss@1.32.0)(postcss@8.5.26)(uglify-js@3.19.3))))(vite@7.3.6(@types/node@22.19.19)(jiti@2.7.0)(less@4.4.0)(lightningcss@1.32.0)(sass@1.90.0)(terser@5.50.0)(tsx@4.23.12)(yaml@2.9.1))
       vite-plugin-vue-tracer: 1.5.0(vite@7.3.6(@types/node@22.19.19)(jiti@2.7.0)(less@4.4.0)(lightningcss@1.32.0)(sass@1.90.0)(terser@5.50.0)(tsx@4.23.12)(yaml@2.9.1))(vue@3.5.41(typescript@5.9.3))
       which: 6.0.1
-      ws: 8.21.3
+      ws: 8.21.0
     transitivePeerDependencies:
       - '@azure/app-configuration'
       - '@azure/cosmos'
@@ -31767,7 +31798,7 @@ snapshots:
       vite-plugin-inspect: 11.4.1(@nuxt/kit@4.5.2(magic-string@1.2.2)(magicast@0.5.4)(oxc-parser@0.140.0)(rolldown@1.2.11)(unplugin@3.3.0(esbuild@0.28.2)(rolldown@1.2.11)(rollup@4.62.5)(vite@7.3.6(@types/node@22.19.19)(jiti@2.7.0)(less@4.4.0)(lightningcss@1.32.0)(sass@1.90.0)(terser@5.50.0)(tsx@4.23.12)(yaml@2.9.1))(webpack@5.105.0(@swc/core@1.15.3(@swc/helpers@0.5.23))(cssnano@7.1.9(postcss@8.5.26))(csso@5.0.5)(esbuild@0.28.2)(lightningcss@1.32.0)(postcss@8.5.26)(uglify-js@3.19.3))))(vite@7.3.6(@types/node@22.19.19)(jiti@2.7.0)(less@4.4.0)(lightningcss@1.32.0)(sass@1.90.0)(terser@5.50.0)(tsx@4.23.12)(yaml@2.9.1))
       vite-plugin-vue-tracer: 1.5.0(vite@7.3.6(@types/node@22.19.19)(jiti@2.7.0)(less@4.4.0)(lightningcss@1.32.0)(sass@1.90.0)(terser@5.50.0)(tsx@4.23.12)(yaml@2.9.1))(vue@3.5.13(typescript@5.8.3))
       which: 6.0.1
-      ws: 8.21.3
+      ws: 8.21.0
     transitivePeerDependencies:
       - '@azure/app-configuration'
       - '@azure/cosmos'
@@ -37881,6 +37912,13 @@ snapshots:
       '@aws-sdk/credential-provider-web-identity': 3.972.49
       ws: 8.21.3
 
+  '@vercel/functions@3.9.3(@aws-sdk/credential-provider-web-identity@3.972.49)(ws@8.21.0)':
+    dependencies:
+      '@vercel/oidc': 3.8.4
+    optionalDependencies:
+      '@aws-sdk/credential-provider-web-identity': 3.972.49
+      ws: 8.21.0
+
   '@vercel/functions@3.9.3(@aws-sdk/credential-provider-web-identity@3.972.49)(ws@8.21.3)':
     dependencies:
       '@vercel/oidc': 3.8.4
@@ -37888,12 +37926,20 @@ snapshots:
       '@aws-sdk/credential-provider-web-identity': 3.972.49
       ws: 8.21.3
 
+  '@vercel/functions@3.9.3(@aws-sdk/credential-provider-web-identity@3.972.77)(ws@8.21.0)':
+    dependencies:
+      '@vercel/oidc': 3.8.4
+    optionalDependencies:
+      '@aws-sdk/credential-provider-web-identity': 3.972.77
+      ws: 8.21.0
+
   '@vercel/functions@3.9.3(@aws-sdk/credential-provider-web-identity@3.972.77)(ws@8.21.3)':
     dependencies:
       '@vercel/oidc': 3.8.4
     optionalDependencies:
       '@aws-sdk/credential-provider-web-identity': 3.972.77
       ws: 8.21.3
+    optional: true
 
   '@vercel/geistdocs@2.7.0(aff8287cfeaf7ca6ee27cf7bcf618115)':
     dependencies:
@@ -39530,7 +39576,7 @@ snapshots:
 
   '@workflow/world-vercel@5.0.0-beta.38(@aws-sdk/credential-provider-web-identity@3.972.49)(@opentelemetry/api@1.9.1)':
     dependencies:
-      '@vercel/functions': 3.9.3(@aws-sdk/credential-provider-web-identity@3.972.49)(ws@8.21.3)
+      '@vercel/functions': 3.9.3(@aws-sdk/credential-provider-web-identity@3.972.49)(ws@8.21.0)
       '@vercel/oidc': 3.2.0
       '@vercel/queue': 0.4.0(@opentelemetry/api@1.9.1)
       '@workflow/errors': 5.0.0-beta.17
@@ -39538,7 +39584,7 @@ snapshots:
       cbor-x: 1.6.0
       ulid: 3.0.2
       undici: 7.29.0
-      ws: 8.21.3
+      ws: 8.21.0
       zod: 4.3.6
     optionalDependencies:
       '@opentelemetry/api': 1.9.1
@@ -39549,7 +39595,7 @@ snapshots:
 
   '@workflow/world-vercel@5.0.0-beta.38(@aws-sdk/credential-provider-web-identity@3.972.77)(@opentelemetry/api@1.9.1)':
     dependencies:
-      '@vercel/functions': 3.9.3(@aws-sdk/credential-provider-web-identity@3.972.77)(ws@8.21.3)
+      '@vercel/functions': 3.9.3(@aws-sdk/credential-provider-web-identity@3.972.77)(ws@8.21.0)
       '@vercel/oidc': 3.2.0
       '@vercel/queue': 0.4.0(@opentelemetry/api@1.9.1)
       '@workflow/errors': 5.0.0-beta.17
@@ -39557,7 +39603,7 @@ snapshots:
       cbor-x: 1.6.0
       ulid: 3.0.2
       undici: 7.29.0
-      ws: 8.21.3
+      ws: 8.21.0
       zod: 4.3.6
     optionalDependencies:
       '@opentelemetry/api': 1.9.1
@@ -45001,7 +45047,7 @@ snapshots:
       whatwg-encoding: 3.1.1
       whatwg-mimetype: 4.0.0
       whatwg-url: 14.2.0
-      ws: 8.21.3
+      ws: 8.21.0
       xml-name-validator: 5.0.0
     transitivePeerDependencies:
       - bufferutil
@@ -52673,7 +52719,7 @@ snapshots:
       sockjs: 0.3.24
       spdy: 4.0.2(supports-color@8.1.1)
       webpack-dev-middleware: 7.4.2(tslib@2.8.1)(webpack@5.105.0(@swc/core@1.15.3(@swc/helpers@0.5.23))(cssnano@7.1.9(postcss@8.5.12))(csso@5.0.5)(esbuild@0.28.0)(lightningcss@1.32.0)(postcss@8.5.12)(uglify-js@3.19.3))
-      ws: 8.21.3
+      ws: 8.21.0
     optionalDependencies:
       webpack: 5.105.0(@swc/core@1.15.3(@swc/helpers@0.5.23))(cssnano@7.1.9(postcss@8.5.12))(csso@5.0.5)(esbuild@0.28.0)(lightningcss@1.32.0)(postcss@8.5.12)(uglify-js@3.19.3)
     transitivePeerDependencies:

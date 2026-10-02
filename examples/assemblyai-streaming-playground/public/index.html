@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AssemblyAI streaming playground</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect x=%276%27 y=%276%27 width=%2720%27 height=%2720%27 rx=%274%27 transform=%27rotate(45 16 16)%27 fill=%27%232545d3%27/%3E%3C/svg%3E" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --night: #070b1a;
+    --night-2: #0e1428;
+    --night-3: #161d38;
+    --line: rgba(255, 255, 255, 0.09);
+    --text: #e8eaf2;
+    --muted: #8d93a8;
+    --blue: #2545d3;
+    --blue-bright: #5c74ff;
+    --sheet: #f7f7f4;
+    --sheet-line: #e2e2dc;
+    --ink: #15161a;
+    --ink-soft: #5b5f6b;
+    --ink-partial: #8b8f99;
+    --danger: #ff6b6b;
+    --ok: #3ad29f;
+    --spk-0: #2545d3; --spk-1: #e4572e; --spk-2: #1b998b; --spk-3: #7b3fe4;
+    --spk-4: #d99a1b; --spk-5: #c2185b; --spk-6: #00838f; --spk-7: #6d4c41;
+    --font: 'IBM Plex Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  }
+  * { box-sizing: border-box; scrollbar-width: thin; scrollbar-color: var(--night-3) transparent; }
+  .sheet-wrap { scrollbar-color: #d4d4ce transparent; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    font-family: var(--font); font-size: 14px; line-height: 1.5;
+    color: var(--text); background: var(--night);
+    font-variant-numeric: tabular-nums;
+  }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--blue-bright); outline-offset: 2px; }
+
+  .top {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    height: 56px; padding: 0 20px; border-bottom: 1px solid var(--line);
+  }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 16px; letter-spacing: -0.01em; }
+  .brand .mark { width: 14px; height: 14px; border-radius: 3px; background: var(--blue); transform: rotate(45deg); }
+  .brand .sub { color: var(--muted); font-weight: 400; margin-left: 2px; }
+  .top .right { color: var(--muted); }
+  .top .right code { color: var(--text); }
+
+  .layout {
+    display: grid; grid-template-columns: 320px minmax(0, 1fr) 340px;
+    height: calc(100% - 56px);
+  }
+  @media (max-width: 1100px) {
+    .layout { grid-template-columns: 1fr; height: auto; }
+    .settings, .session { border: 0 !important; }
+  }
+
+  /* settings */
+  .settings { border-right: 1px solid var(--line); overflow-y: auto; padding: 18px 18px 40px; }
+  fieldset { border: 0; margin: 0 0 22px; padding: 0; min-width: 0; }
+  legend { font-weight: 600; margin-bottom: 10px; padding: 0; }
+  .field { display: grid; gap: 4px; margin-bottom: 10px; }
+  .field > span { color: var(--muted); }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  input[type=text], input[type=number], select, textarea {
+    width: 100%; padding: 7px 9px; border-radius: 6px;
+    border: 1px solid var(--line); background: var(--night-2); color: var(--text);
+  }
+  input::placeholder, textarea::placeholder { color: #5d6377; }
+  textarea { resize: vertical; min-height: 60px; }
+  .check { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; cursor: pointer; }
+  .check input { width: 15px; height: 15px; accent-color: var(--blue); margin: 0; }
+  details { margin-bottom: 18px; }
+  summary { cursor: pointer; font-weight: 600; margin-bottom: 10px; list-style: none; }
+  summary::before { content: '▸'; display: inline-block; width: 14px; color: var(--muted); }
+  details[open] summary::before { content: '▾'; }
+  .settings[aria-disabled=true] { opacity: 0.55; pointer-events: none; }
+  .hint { color: var(--muted); font-size: 12.5px; margin: -4px 0 10px; }
+
+  /* stage */
+  .stage { display: flex; flex-direction: column; min-width: 0; }
+  .controls {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 14px 20px; border-bottom: 1px solid var(--line);
+  }
+  .btn {
+    padding: 9px 14px; border-radius: 8px; border: 1px solid var(--line);
+    background: var(--night-2); cursor: pointer; font-weight: 500;
+  }
+  .btn:hover { background: var(--night-3); }
+  .btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .btn.primary:hover { background: var(--blue-bright); border-color: var(--blue-bright); }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  .status { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); margin-left: auto; }
+  .status .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+  .status[data-state=listening] .dot { background: var(--ok); animation: pulse 1.2s ease-in-out infinite; }
+  .status[data-state=finishing] .dot, .status[data-state=connecting] .dot { background: var(--blue-bright); }
+  .status[data-state=error] .dot { background: var(--danger); }
+  .status[data-state=done] .dot { background: var(--ok); }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+  .level { width: 90px; height: 6px; border-radius: 3px; background: var(--night-3); overflow: hidden; }
+  .level > div { height: 100%; width: 0; background: var(--ok); transition: width 80ms linear; }
+
+  .sheet-wrap { flex: 1; min-height: 0; overflow-y: auto; padding: 20px; }
+  .sheet {
+    background: var(--sheet); color: var(--ink); border-radius: 10px;
+    min-height: 100%; padding: 8px 0 24px;
+  }
+  .empty { color: var(--ink-soft); padding: 28px 32px; margin: 0; font-size: 16px; max-width: 46ch; }
+  .turns { list-style: none; margin: 0; padding: 0; }
+  .turn {
+    display: grid; grid-template-columns: 6px minmax(0, 1fr); gap: 0 20px;
+    padding: 14px 28px 14px 22px; border-bottom: 1px solid var(--sheet-line);
+  }
+  .turn:last-child { border-bottom: 0; }
+  .rail { border-radius: 3px; background: var(--speaker, #c9cbd1); transition: background 400ms ease; }
+  .turn-meta { display: flex; gap: 14px; align-items: baseline; color: var(--ink-soft); font-size: 12.5px; margin-bottom: 2px; }
+  .turn-meta .speaker { color: var(--speaker, var(--ink-soft)); font-weight: 600; }
+  .turn-meta .badge { padding: 0 6px; border-radius: 4px; background: #ecece7; }
+  .text { margin: 0; font-size: 18px; line-height: 1.55; max-width: 70ch; color: var(--ink); transition: color 300ms ease; }
+  .turn.partial .text { color: var(--ink-partial); }
+  .turn.partial .text::after { content: '…'; color: var(--blue); }
+  .turn.revised .rail { box-shadow: 0 0 0 3px color-mix(in srgb, var(--speaker) 35%, transparent); }
+  .turn.redacted-note .text { font-style: italic; }
+  .warnings { padding: 0 20px 16px; display: grid; gap: 6px; }
+  .warning { color: #f0c674; font-size: 13px; }
+  .warning.error { color: var(--danger); }
+
+  /* session panel */
+  .session { border-left: 1px solid var(--line); overflow-y: auto; overflow-x: hidden; padding: 18px; display: grid; gap: 22px; align-content: start; min-width: 0; }
+  .session > section { min-width: 0; }
+  .session h2 { font-size: 14px; font-weight: 600; margin: 0 0 10px; }
+  dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; }
+  dt { color: var(--muted); }
+  dd { margin: 0; overflow-wrap: anywhere; }
+  .events { display: grid; gap: 4px; }
+  .event { display: flex; justify-content: space-between; color: var(--muted); }
+  .event b { color: var(--text); font-weight: 500; }
+  .revisions { display: grid; gap: 4px; color: var(--muted); font-size: 13px; }
+  pre.code {
+    margin: 0; padding: 12px; border-radius: 8px; background: var(--night-2); border: 1px solid var(--line);
+    font: 12.5px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; overflow-x: auto; white-space: pre; color: #cfd4e6; max-width: 100%;
+  }
+  .code-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .code-head button { padding: 4px 10px; font-size: 12.5px; }
+  .muted { color: var(--muted); }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand"><span class="mark" aria-hidden="true"></span>AssemblyAI <span class="sub">Streaming playground</span></div>
+  <div class="right">Vercel AI SDK, <code>@ai-sdk/assemblyai</code> provider, <code>experimental_streamTranscribe</code></div>
+</header>
+
+<main class="layout">
+  <aside class="settings" id="settingsPanel">
+    <form id="settings" autocomplete="off">
+      <fieldset>
+        <legend>Model</legend>
+        <label class="field"><span>Speech model</span>
+          <select name="model">
+            <option value="universal-3-5-pro">universal-3-5-pro</option>
+            <option value="universal-3-6-pro" selected>universal-3-6-pro</option>
+            <option value="universal-streaming-english">universal-streaming-english</option>
+            <option value="universal-streaming-multilingual">universal-streaming-multilingual</option>
+          </select></label>
+        <label class="field"><span>Accuracy and latency (Pro models)</span>
+          <select name="mode">
+            <option value="">Server default (balanced)</option>
+            <option value="min_latency">min_latency, fastest partials</option>
+            <option value="balanced">balanced, for voice agents</option>
+            <option value="max_accuracy">max_accuracy, for scribes</option>
+          </select></label>
+      </fieldset>
+
+      <fieldset>
+        <legend>Who's speaking</legend>
+        <label class="check"><input type="checkbox" name="speakerLabels" checked /> Label speakers</label>
+        <div class="row">
+          <label class="field"><span>Max speakers</span><input type="number" name="maxSpeakers" min="1" max="10" placeholder="auto" /></label>
+          <label class="field"><span>Revise labels</span>
+            <select name="revisionInterval">
+              <option value="">At the end</option>
+              <option value="120000">Every 2 minutes</option>
+              <option value="180000">Every 3 minutes</option>
+              <option value="300000">Every 5 minutes</option>
+            </select></label>
+        </div>
+        <p class="hint">Revisions recolor earlier turns in place when the server reassigns a speaker.</p>
+      </fieldset>
+
+      <fieldset>
+        <legend>Vocabulary and context</legend>
+        <label class="field"><span>Key terms</span><input type="text" name="keyterms" placeholder="AssemblyAI, Vercel, AI SDK" /></label>
+        <label class="field"><span>What the audio is about (Pro models)</span><textarea name="prompt" placeholder="A product demo of speech-to-text streaming."></textarea></label>
+        <label class="field"><span>Languages to expect (Pro models)</span><input type="text" name="languageCodes" placeholder="en, es" /></label>
+        <label class="check"><input type="checkbox" name="languageDetection" /> Report the detected language on each turn</label>
+      </fieldset>
+
+      <fieldset>
+        <legend>Privacy</legend>
+        <label class="check"><input type="checkbox" name="redactPii" /> Redact personal information</label>
+        <label class="field"><span>What to redact</span><input type="text" name="redactPiiPolicies" value="person_name, phone_number, email_address, date" /></label>
+        <div class="row">
+          <label class="field"><span>Replace with</span>
+            <select name="redactPiiSub"><option value="entity_name">[ENTITY_TYPE]</option><option value="hash">####</option></select></label>
+          <label class="field"><span>Partial turns</span>
+            <select name="includePartialTurns"><option value="">Default</option><option value="true">Always</option><option value="false">Never</option></select></label>
+        </div>
+        <p class="hint">Only final turns are redacted, so partials are off by default while redaction is on.</p>
+      </fieldset>
+
+      <details>
+        <summary>Turn timing</summary>
+        <label class="check"><input type="checkbox" name="formatTurns" /> Formatted finals (Universal Streaming)</label>
+        <div class="row">
+          <label class="field"><span>Min turn silence, ms</span><input type="number" name="minTurnSilence" min="50" max="10000" step="10" /></label>
+          <label class="field"><span>Max turn silence, ms</span><input type="number" name="maxTurnSilence" min="0" step="10" /></label>
+        </div>
+        <div class="row">
+          <label class="field"><span>Interruption delay, ms</span><input type="number" name="interruptionDelay" min="0" max="1000" step="10" /></label>
+          <label class="field"><span>Continuous partials</span>
+            <select name="continuousPartials"><option value="">Default</option><option value="true">On</option><option value="false">Off</option></select></label>
+        </div>
+        <label class="field"><span>End-of-turn confidence (Universal Streaming)</span><input type="number" name="endOfTurnConfidenceThreshold" min="0" max="1" step="0.05" /></label>
+      </details>
+
+      <details>
+        <summary>Audio and session</summary>
+        <div class="row">
+          <label class="field"><span>Voice focus (Pro models)</span>
+            <select name="voiceFocus"><option value="">Off</option><option value="near-field">Near field (headset)</option><option value="far-field">Far field (room mic)</option></select></label>
+          <label class="field"><span>Focus strength</span><input type="number" name="voiceFocusThreshold" min="0" max="1" step="0.05" placeholder="0.7" /></label>
+        </div>
+        <label class="field"><span>Voice activity threshold</span><input type="number" name="vadThreshold" min="0" max="1" step="0.05" /></label>
+        <label class="check"><input type="checkbox" name="sessionHeartbeat" /> Session heartbeats</label>
+        <label class="check"><input type="checkbox" name="acknowledgeSilence" /> Silence messages (Pro models)</label>
+      </details>
+    </form>
+  </aside>
+
+  <section class="stage">
+    <div class="controls">
+      <button class="btn primary" id="mic">Start listening</button>
+      <button class="btn" id="sample">Play the sample clip</button>
+      <button class="btn" id="stop" disabled>Stop</button>
+      <div class="level" aria-hidden="true"><div id="level"></div></div>
+      <div class="status" id="status" data-state="ready"><span class="dot"></span><span id="statusText">Ready</span></div>
+    </div>
+    <div class="sheet-wrap">
+      <div class="sheet">
+        <p class="empty" id="empty">Nothing yet. Start listening and say something, or play the sample clip to watch partial words settle into final turns.</p>
+        <ol class="turns" id="turns"></ol>
+      </div>
+    </div>
+    <div class="warnings" id="warnings"></div>
+  </section>
+
+  <aside class="session">
+    <section>
+      <h2>Session</h2>
+      <dl>
+        <dt>Model used</dt><dd id="modelUsed" class="muted">—</dd>
+        <dt>First partial</dt><dd id="firstPartial" class="muted">—</dd>
+        <dt>Turns</dt><dd id="turnCount">0</dd>
+        <dt>Partials</dt><dd id="partialCount">0</dd>
+        <dt>Audio</dt><dd id="audioDuration" class="muted">—</dd>
+        <dt>Session id</dt><dd id="sessionId" class="muted">—</dd>
+      </dl>
+    </section>
+    <section>
+      <h2>Messages from the server</h2>
+      <div class="events" id="events"><span class="muted">None yet.</span></div>
+    </section>
+    <section>
+      <h2>Speaker revisions</h2>
+      <div class="revisions" id="revisions"><span class="muted">None yet.</span></div>
+    </section>
+    <section>
+      <div class="code-head"><h2 style="margin:0">The call these settings make</h2><button class="btn" id="copy">Copy</button></div>
+      <pre class="code" id="code"></pre>
+    </section>
+  </aside>
+</main>
+<script type="module" src="/app.js"></script>
+</body>
+</html>
